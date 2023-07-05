@@ -1,37 +1,36 @@
-package cmd
+package os
 
 import (
 	"testing"
 
 	root "github.com/equinix/metal-cli/internal/cli"
-	"github.com/equinix/metal-cli/internal/os"
 	outputPkg "github.com/equinix/metal-cli/internal/outputs"
 	"github.com/spf13/cobra"
 )
 
 func TestCli_RegisterCommands(t *testing.T) {
-	rootClient := root.NewClient(consumerToken, apiURL, Version)
+	rootClient := root.NewClient("", "https://api.equinix.com/metal/v1/", "test")
 	rootCmd := rootClient.NewCommand()
 	rootCmd.DisableSuggestions = false
 	type fields struct {
 		MainCmd  *cobra.Command
 		Outputer outputPkg.Outputer
-		cli *Cli
 	}
 	type args struct {
 		client *root.Client
 	}
+	outputter := outputPkg.Outputer(&outputPkg.Standard{})
 	tests := []struct {
-		name   string
-		fields fields
-		args   args
+		name    string
+		fields  fields
+		args    args
 		cmdFunc func(*testing.T, *cobra.Command)
 	}{
 		{
 			name: "test",
 			fields: fields{
 				MainCmd:  &cobra.Command{},
-				Outputer: outputPkg.Outputer(&outputPkg.Standard{}),
+				Outputer: outputPkg.Outputer(outputter),
 			},
 			args: args{
 				client: &root.Client{},
@@ -39,7 +38,6 @@ func TestCli_RegisterCommands(t *testing.T) {
 			cmdFunc: func(t *testing.T, c *cobra.Command) {
 				t.Helper()
 				root := c.Root()
-				root.SetArgs([]string{subCommand})
 				if err := root.Execute(); err != nil {
 					t.Logf("%+v", root.Args)
 					t.Error("expected an error")
@@ -49,8 +47,8 @@ func TestCli_RegisterCommands(t *testing.T) {
 		{
 			name: "os",
 			fields: fields{
-				MainCmd: os.NewClient(rootClient, Outputer).NewCommand(),
-				Outputer: outputPkg.Outputer(&outputPkg.Standard{}),
+				MainCmd:  NewClient(rootClient, outputter).NewCommand(),
+				Outputer: outputPkg.Outputer(outputter),
 			},
 			args: args{
 				client: rootClient,
@@ -58,21 +56,18 @@ func TestCli_RegisterCommands(t *testing.T) {
 			cmdFunc: func(t *testing.T, c *cobra.Command) {
 				t.Helper()
 				root := c.Root()
-				root.SetArgs([]string{subCommand})
 				if err := root.Execute(); err != nil {
 					t.Logf("%+v", root.Args)
 					t.Error("expected an error")
+				} else {
+					t.Error("no error happened...but what did happen?")
 				}
 			},
 		},
-	},
+	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cli := &Cli{
-				MainCmd:  tt.fields.MainCmd,
-				Outputer: tt.fields.Outputer,
-			}
-			cli.RegisterCommands(tt.args.client)
+			tt.cmdFunc(t, tt.fields.MainCmd)
 		})
 	}
 }
